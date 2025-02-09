@@ -27,9 +27,9 @@ zabbix_export:
               var req = new HttpRequest();
               req.get(encodeURI('http://' + params.host + ':' + params.port + '/status'));
             } catch (error) {
-            	Zabbix.log(3, "Proxmox API failed: " + params.host + " Error: " + error);
-            	if (!Number.isInteger(error))
-            		return 520;
+              Zabbix.log(3, "birdawtcher failed: " + params.host + " Error: " + error);
+              if (!Number.isInteger(error))
+                return 520;
             }
             return req.getStatus();
           parameters:

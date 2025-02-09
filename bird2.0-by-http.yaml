@@ -62,7 +62,7 @@ zabbix_export:
         - uuid: a24b459507b24c7cadf1b64ba6c5c7cb
           name: 'BGP Discovery'
           type: DEPENDENT
-          key: bird.discovery.protocols
+          key: bird.protocols.bgp
           delay: '0'
           filter:
             conditions:
@@ -73,7 +73,7 @@ zabbix_export:
             - uuid: 88977fc9c2924646bdf27185068caff8
               name: 'BGP [{#PROTOCOL}]: State'
               type: DEPENDENT
-              key: 'bird.protocol.state[{#PROTOCOL}]'
+              key: 'bird.protocol.bgp.state[{#PROTOCOL}]'
               delay: '0'
               value_type: CHAR
               trends: '0'
@@ -82,7 +82,7 @@ zabbix_export:
                   parameters:
                     - $.bgp_state
               master_item:
-                key: 'bird.protocol[{#PROTOCOL}]'
+                key: 'bird.protocol.bgp[{#PROTOCOL}]'
               tags:
                 - tag: protocol
                   value: '{#PROTOCOL}'
@@ -90,7 +90,7 @@ zabbix_export:
                   value: bgp
               trigger_prototypes:
                 - uuid: d9b3aa545e2f4147b9002b113b105952
-                  expression: 'last(/BIRD2.0 by HTTP/bird.protocol.state[{#PROTOCOL}])<>"Established"'
+                  expression: 'last(/BIRD2.0 by HTTP/bird.protocol.bgp.state[{#PROTOCOL}])<>"Established"'
                   name: 'BGP [{#PROTOCOL}]: peer {#PROTOCOL.NEIGHBOR_ADDRESS} ASN {#PROTOCOL.NEIGHBOR_AS} is DOWN'
                   priority: AVERAGE
                   tags:
@@ -101,7 +101,7 @@ zabbix_export:
             - uuid: 3a3e12cf570445c192f6fd958d8c3766
               name: 'BGP [{#PROTOCOL}]: Get data'
               type: HTTP_AGENT
-              key: 'bird.protocol[{#PROTOCOL}]'
+              key: 'bird.protocol.bgp[{#PROTOCOL}]'
               value_type: TEXT
               trends: '0'
               preprocessing:
@@ -123,6 +123,68 @@ zabbix_export:
               path: $.neighbor_address
             - lld_macro: '{#PROTOCOL.NEIGHBOR_AS}'
               path: $.neighbor_as
+            - lld_macro: '{#PROTOCOL}'
+              path: $.protocol
+        - uuid: 5a2c1a7147d1446f897d132370599640
+          name: 'OSPF Discovery'
+          type: DEPENDENT
+          key: bird.protocols.ospf
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#PROTOCOL.BIRD_PROTOCOL}'
+                value: OSPF
+                formulaid: A
+          item_prototypes:
+            - uuid: 6c5f4925aa1548bea2cb85639e303e8c
+              name: 'OSPF [{#PROTOCOL}]: State'
+              type: DEPENDENT
+              key: 'bird.protocol.ospf.state[{#PROTOCOL}]'
+              delay: '0'
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.state
+              master_item:
+                key: 'bird.protocol.ospf[{#PROTOCOL}]'
+              tags:
+                - tag: protocol
+                  value: '{#PROTOCOL}'
+                - tag: type
+                  value: ospf
+              trigger_prototypes:
+                - uuid: a04132b27f4b485b9f4d1629c0f920f0
+                  expression: 'last(/BIRD2.0 by HTTP/bird.protocol.ospf.state[{#PROTOCOL}])<>"UP"'
+                  name: 'OSPF [{#PROTOCOL}]: is DOWN'
+                  priority: AVERAGE
+                  tags:
+                    - tag: protocol
+                      value: '{#PROTOCOL}'
+                    - tag: type
+                      value: ospf
+            - uuid: e826c0fe03214859988b7bc46ed35534
+              name: 'OSPF [{#PROTOCOL}]: Get data'
+              type: HTTP_AGENT
+              key: 'bird.protocol.ospf[{#PROTOCOL}]'
+              value_type: TEXT
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.protocols.{#PROTOCOL}'
+              url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+              tags:
+                - tag: protocol
+                  value: '{#PROTOCOL}'
+                - tag: type
+                  value: ospf
+          master_item:
+            key: bird.protocols
+          lld_macro_paths:
+            - lld_macro: '{#PROTOCOL.BIRD_PROTOCOL}'
+              path: $.bird_protocol
             - lld_macro: '{#PROTOCOL}'
               path: $.protocol
       macros:

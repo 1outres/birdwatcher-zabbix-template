@@ -127,7 +127,7 @@ zabbix_export:
               path: $.protocol
       macros:
         - macro: '{$BIRDWATCHER.URL.HOST}'
-          value: '<SET PVE HOST>'
+          value: '<SET BIRDWATCHER HOST>'
           description: 'The hostname or IP address of the birdwatcher host.'
         - macro: '{$BIRDWATCHER.URL.PORT}'
           value: '29184'

@@ -1,0 +1,134 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: 2943416b9521445cadde87869646c283
+      template: 'BIRD2.0 by HTTP'
+      name: 'BIRD2.0 by HTTP'
+      groups:
+        - name: Templates
+        - name: Templates/Applications
+        - name: 'Templates/Network devices'
+      items:
+        - uuid: df64b379942f42c4a77e4641b4bc7d30
+          name: 'birdwatcher status'
+          type: SCRIPT
+          key: bird.api.status
+          delay: 5m
+          params: |
+            try {
+              var params = JSON.parse(value);
+              var req = new HttpRequest();
+              req.get(encodeURI('http://' + params.host + ':' + params.port + '/status'));
+            } catch (error) {
+            	Zabbix.log(3, "Proxmox API failed: " + params.host + " Error: " + error);
+            	if (!Number.isInteger(error))
+            		return 520;
+            }
+            return req.getStatus();
+          parameters:
+            - name: host
+              value: '{$BIRDWATCHER.URL.HOST}'
+            - name: port
+              value: '{$BIRDWATCHER.URL.PORT}'
+          triggers:
+            - uuid: f2ac9c70fe85478c8550e69770c59120
+              expression: 'last(/BIRD2.0 by HTTP/bird.api.status)<>200'
+              name: 'birdwatcher: Service not available'
+              priority: HIGH
+        - uuid: b15de32c90d44929bea79a4bf71a492f
+          name: 'Get protocols'
+          type: HTTP_AGENT
+          key: bird.protocols
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.protocols.*'
+            - type: REGEX
+              parameters:
+                - '\[(.+)\]'
+                - '{"data":[\1]}'
+          url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+      discovery_rules:
+        - uuid: a24b459507b24c7cadf1b64ba6c5c7cb
+          name: 'BGP Discovery'
+          type: DEPENDENT
+          key: bird.discovery.protocols
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#PROTOCOL.BIRD_PROTOCOL}'
+                value: BGP
+                formulaid: A
+          item_prototypes:
+            - uuid: 88977fc9c2924646bdf27185068caff8
+              name: 'BGP [{#PROTOCOL}]: State'
+              type: DEPENDENT
+              key: 'bird.protocol.state[{#PROTOCOL}]'
+              delay: '0'
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.bgp_state
+              master_item:
+                key: 'bird.protocol[{#PROTOCOL}]'
+              tags:
+                - tag: protocol
+                  value: '{#PROTOCOL}'
+                - tag: type
+                  value: bgp
+              trigger_prototypes:
+                - uuid: d9b3aa545e2f4147b9002b113b105952
+                  expression: 'last(/BIRD2.0 by HTTP/bird.protocol.state[{#PROTOCOL}])<>"Established"'
+                  name: 'BGP [{#PROTOCOL}]: peer {#PROTOCOL.NEIGHBOR_ADDRESS} ASN {#PROTOCOL.NEIGHBOR_AS} is DOWN'
+                  priority: AVERAGE
+                  tags:
+                    - tag: protocol
+                      value: '{#PROTOCOL}'
+                    - tag: type
+                      value: bgp
+            - uuid: 3a3e12cf570445c192f6fd958d8c3766
+              name: 'BGP [{#PROTOCOL}]: Get data'
+              type: HTTP_AGENT
+              key: 'bird.protocol[{#PROTOCOL}]'
+              value_type: TEXT
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.protocols.{#PROTOCOL}'
+              url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+              tags:
+                - tag: protocol
+                  value: '{#PROTOCOL}'
+                - tag: type
+                  value: bgp
+          master_item:
+            key: bird.protocols
+          lld_macro_paths:
+            - lld_macro: '{#PROTOCOL.BIRD_PROTOCOL}'
+              path: $.bird_protocol
+            - lld_macro: '{#PROTOCOL.NEIGHBOR_ADDRESS}'
+              path: $.neighbor_address
+            - lld_macro: '{#PROTOCOL.NEIGHBOR_AS}'
+              path: $.neighbor_as
+            - lld_macro: '{#PROTOCOL}'
+              path: $.protocol
+      macros:
+        - macro: '{$BIRDWATCHER.URL.HOST}'
+          value: '<SET PVE HOST>'
+          description: 'The hostname or IP address of the birdwatcher host.'
+        - macro: '{$BIRDWATCHER.URL.PORT}'
+          value: '29184'
+          description: 'The API uses the HTTP protocol and the server listens to port 29184 by default.'

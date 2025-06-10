@@ -34,7 +34,7 @@ zabbix_export:
             return req.getStatus();
           parameters:
             - name: host
-              value: '{$BIRDWATCHER.URL.HOST}'
+              value: '{HOST.CONN}'
             - name: port
               value: '{$BIRDWATCHER.URL.PORT}'
           triggers:
@@ -57,7 +57,7 @@ zabbix_export:
               parameters:
                 - '\[(.+)\]'
                 - '{"data":[\1]}'
-          url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+          url: 'http://{HOST.CONN}:{$BIRDWATCHER.URL.PORT}/protocols'
       discovery_rules:
         - uuid: a24b459507b24c7cadf1b64ba6c5c7cb
           name: 'BGP Discovery'
@@ -108,7 +108,7 @@ zabbix_export:
                 - type: JSONPATH
                   parameters:
                     - '$.protocols.{#PROTOCOL}'
-              url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+              url: 'http://{HOST.CONN}:{$BIRDWATCHER.URL.PORT}/protocols'
               tags:
                 - tag: protocol
                   value: '{#PROTOCOL}'
@@ -174,7 +174,7 @@ zabbix_export:
                 - type: JSONPATH
                   parameters:
                     - '$.protocols.{#PROTOCOL}'
-              url: 'http://{$BIRDWATCHER.URL.HOST}:{$BIRDWATCHER.URL.PORT}/protocols'
+              url: 'http://{HOST.CONN}:{$BIRDWATCHER.URL.PORT}/protocols'
               tags:
                 - tag: protocol
                   value: '{#PROTOCOL}'
@@ -188,9 +188,6 @@ zabbix_export:
             - lld_macro: '{#PROTOCOL}'
               path: $.protocol
       macros:
-        - macro: '{$BIRDWATCHER.URL.HOST}'
-          value: '<SET BIRDWATCHER HOST>'
-          description: 'The hostname or IP address of the birdwatcher host.'
         - macro: '{$BIRDWATCHER.URL.PORT}'
           value: '29184'
           description: 'The API uses the HTTP protocol and the server listens to port 29184 by default.'
